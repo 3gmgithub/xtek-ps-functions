@@ -1,4 +1,4 @@
-# List of functions
+# List of functions1
 function Get-ScriptPath {
     # If using PowerShell ISE
     if ($psISE)
