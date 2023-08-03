@@ -1,20 +1,17 @@
 # List of functions1
-function Get-ScriptPath {
-    # If using PowerShell ISE
-    if ($psISE)
-    {
-        $ScriptPath = Split-Path -Parent -Path $psISE.CurrentFile.FullPath
-    }
-    # If using PowerShell 3.0 or greater
-    elseif($PSVersionTable.PSVersion.Major -gt 3)
-    {
-        $ScriptPath = $PSScriptRoot
-    }
-    # If using PowerShell 2.0 or lower
-    else
-    {
-        $ScriptPath = split-path -parent $MyInvocation.MyCommand.Path
-    }
+
+# Converts Powershell style variables to Batch Style Variables
+function ConvertPSVarToBatchVar {
+    param($value)
+    # Find stuff between two () have to escape the () with \
+    $tempvalue = $value | Select-String -Pattern '\(.*\)'
+
+    # Get match value
+    $tempvalue = $tempvalue.Matches.value
+
+    # Save this for later
+    $psvalue = '{0}' -f $tempvalue
+    $psvalue = '$' + $psvalue
 
     # Get stuff after : before )
     $tempvalue = $tempvalue.Substring(6,$tempvalue.Length-7)
@@ -244,4 +241,3 @@ Function RegChange {
 
     New-ItemProperty -Path $regkey -Name $regparam -Type $regtype -Value $regvalue -Force
 }
-
