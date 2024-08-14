@@ -39,7 +39,12 @@ function debugpause {
 
 # Downloads files with some error checking
 function downloadinstaller {
-    param ($downloadfile, $output)
+    param (
+        $downloadfile,
+        $output,
+        $useragent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.3'
+    )
+
     $outpath = Get-ScriptPath
     $link = $downloadfile.split('/')
     $connectresult = NetTest $link[2]
@@ -48,7 +53,7 @@ function downloadinstaller {
     if ($connectresult -eq $true){
         Try
         {  
-            Invoke-WebRequest -Uri $downloadfile -OutFile "$outfile"
+            Invoke-WebRequest -Uri $downloadfile -UserAgent $useragent -OutFile "$outfile"
             If (Test-Path -Path $outfile -PathType Leaf) {
                 Write-Host "$outfile exists continuing..." 
             }
@@ -62,9 +67,8 @@ function downloadinstaller {
     } else {
         Write-Output "Unable to connect to server"
     }
-
-
 }
+
 
 # Download latest or pre-release files from a public Git Repository
 function downloadGit {
