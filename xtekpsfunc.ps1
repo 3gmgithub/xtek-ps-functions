@@ -42,30 +42,41 @@ function downloadinstaller {
     param (
         $downloadfile,
         $output,
-        $useragent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.3'
+        $useragent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.3',
+        $notest = 'n'
     )
 
     $outpath = Get-ScriptPath
     $link = $downloadfile.split('/')
-    $connectresult = NetTest $link[2]
     $outfile = '{0}\{1}' -f $outpath,$output
 
-    if ($connectresult -eq $true){
-        Try
-        {  
+    if ($notest -eq 'y') {
+        try {
             Invoke-WebRequest -Uri $downloadfile -UserAgent $useragent -OutFile "$outfile"
             If (Test-Path -Path $outfile -PathType Leaf) {
                 Write-Host "$outfile exists continuing..." 
             }
-        }
-        Catch
-        {
+        } catch {
             $ErrorMessage = $_.Exception.Message
             $FailedItem = $_.Exception.ItemName
             Write-Error -Message "$ErrorMessage $FailedItem"
         }
     } else {
-        Write-Output "Unable to connect to server"
+        $connectresult = NetTest $link[2]
+        if ($connectresult -eq $true){
+            try {
+                Invoke-WebRequest -Uri $downloadfile -UserAgent $useragent -OutFile "$outfile"
+                If (Test-Path -Path $outfile -PathType Leaf) {
+                    Write-Host "$outfile exists continuing..." 
+                }
+            } catch {
+                $ErrorMessage = $_.Exception.Message
+                $FailedItem = $_.Exception.ItemName
+                Write-Error -Message "$ErrorMessage $FailedItem"
+            }
+        } else {
+            Write-Output "Unable to connect to server"
+        }
     }
 }
 
