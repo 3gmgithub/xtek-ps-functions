@@ -25,6 +25,11 @@ function ConvertPSVarToBatchVar {
     Return $value
 }
 
+# Install Chocolately
+function installchocolately {
+    Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+}
+
 # Adds a Debug pause to the script
 function debugpause {
     # If running in the console, wait for input before closing.
