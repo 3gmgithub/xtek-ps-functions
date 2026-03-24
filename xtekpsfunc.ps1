@@ -300,3 +300,70 @@ function getMSTenantDetails {
         Write-Error "Failed to retrieve details. Ensure the domain is a valid Microsoft 365 tenant."
     }
 }
+
+function enableBitlocker {
+    # Define the target drive (usually the OS drive)
+    $Drive = "$ENV:SystemDrive"
+
+    Write-Host "Checking Entra ID (Azure AD) join status..." -ForegroundColor Cyan
+
+    # Fetch the device registration status using dsregcmd
+    $DsregStatus = dsregcmd /status | Select-String "AzureAdJoined"
+
+    if ($DsregStatus -match "NO") {
+        Write-Host "The computer is not joined to EntraID" -ForegroundColor Red
+        do {
+            $response = Read-Host "Do you want to launch EntraID join dialog? (y/n)"
+        } until ($response -match '^[yn]$')
+
+        if ($response -eq 'y') {
+            Write-Host "Launching EntraID Dialog..." -ForegroundColor Green
+            Start-Process "ms-device-enrollment:?mode=aadj"
+            do {
+                Start-Sleep -Seconds 10
+                $DsregStatus = dsregcmd /status | Select-String "AzureAdJoined"
+            } until ($DsregStatus -match "YES")
+        } else {
+            Write-Host "You chose not to join to EntraID..." -ForegroundColor Red
+            Write-Host "Ensure you backup your keys manually!" -ForegroundColor Red
+        }
+    }
+
+    Write-Host "Checking BitLocker status on $Drive..." -ForegroundColor Cyan
+    $BitLockerStatus = Get-BitLockerVolume -MountPoint $Drive
+
+    # Proceed only if the drive is fully decrypted
+    if ($BitLockerStatus.VolumeStatus -eq 'FullyDecrypted') {
+        Write-Host "Drive is unencrypted. Initiating BitLocker..." -ForegroundColor Yellow
+        
+        # Enable BitLocker with and generate a recovery password
+        Enable-BitLocker -MountPoint $Drive -EncryptionMethod XtsAes256 -RecoveryPasswordProtector -SkipHardwareTest
+        
+        # Pause briefly to ensure the protector is fully applied before trying to fetch it
+        Start-Sleep -Seconds 5
+        
+        # Retrieve the updated BitLocker volume information to grab the Protector ID
+        $UpdatedVolume = Get-BitLockerVolume -MountPoint $Drive
+        $RecoveryProtector = $UpdatedVolume.KeyProtector | Where-Object { $_.KeyProtectorType -eq 'RecoveryPassword' }
+
+        if ($DsregStatus -match "YES") {
+            if ($RecoveryProtector) {
+                Write-Host "Recovery Password generated successfully. Backing up to Entra ID..." -ForegroundColor Yellow
+
+                # Backup the specific key protector to Entra ID
+                BackupToAAD-BitLockerKeyProtector -MountPoint $Drive -KeyProtectorId $RecoveryProtector.KeyProtectorId
+
+                Write-Host "BitLocker enabled and recovery key backed up to Entra ID successfully." -ForegroundColor Green
+            } else {
+                Write-Host "Error: Could not find the Recovery Password protector to back up." -ForegroundColor Red
+            }
+
+        } else {
+            Write-Host "BitLocker enabled and recovery key is: " + $RecoveryProtector.RecoveryPassword -ForegroundColor Green
+            Write-Host "Ensure you back this up as it is not saved to EntraID!" -ForegroundColor Green
+        }
+        
+    } else {
+        Write-Host "BitLocker is already enabled, currently encrypting, or suspended on $Drive." -ForegroundColor Green
+    }
+}
