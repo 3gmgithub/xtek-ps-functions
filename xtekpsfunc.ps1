@@ -359,7 +359,7 @@ function enableBitlocker {
             }
 
         } else {
-            Write-Host "BitLocker enabled and recovery key is: " + $RecoveryProtector.RecoveryPassword -ForegroundColor Green
+            Write-Host "BitLocker enabled and recovery key is: ${RecoveryProtector.RecoveryPassword}" -ForegroundColor Green
             Write-Host "Ensure you back this up as it is not saved to EntraID!" -ForegroundColor Green
         }
         
