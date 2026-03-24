@@ -262,3 +262,41 @@ Function RegChange {
     New-ItemProperty -Path $regkey -Name $regparam -Type $regtype -Value $regvalue -Force
 }
 
+function getMSTenantDetails {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$DomainName
+    )
+
+    # This endpoint is used by MS login pages to fetch branding and org info
+    $url = "https://login.microsoftonline.com/getuserrealm.srf?login=user@$DomainName&xml=1"
+
+    try {
+        # Using WebClient or Invoke-WebRequest to handle the XML/JSON response
+        $response = Invoke-RestMethod -Uri "https://management.azure.com/metadata/endpoints?api-version=2020-01-01"
+        
+        # A more reliable public method for Name + ID:
+        $tenantUrl = "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration"
+        # Since the specific 'Name' is harder via OpenID, we use the Autodiscover branding endpoint:
+        $brandingUrl = "https://login.microsoftonline.com/common/userrealm/$($DomainName)?api-version=2.1"
+        
+        $data = Invoke-RestMethod -Uri $brandingUrl -Method Get
+
+        if ($data.IsFederated -eq $false -and [string]::IsNullOrEmpty($data.CloudInstanceName)) {
+            throw "Domain not found."
+        }
+
+        # To get the Display Name specifically, we check the 'FederationBrandName' 
+        # or the 'DomainName' context.
+        return [PSCustomObject]@{
+            "Domain"     = $DomainName
+            "TenantID"   = (Invoke-RestMethod "https://login.microsoftonline.com/$DomainName/.well-known/openid-configuration").token_endpoint.Split('/')[3]
+            "TenantName" = $data.FederationBrandName
+            "CloudType"  = $data.NameSpaceType
+        }
+    }
+    catch {
+        Write-Error "Failed to retrieve details. Ensure the domain is a valid Microsoft 365 tenant."
+    }
+}
