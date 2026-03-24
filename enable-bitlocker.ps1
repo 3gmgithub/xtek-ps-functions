@@ -10,6 +10,8 @@ Function getXfunc {
     }
 }
 
+$scriptdir = Get-ScriptPath
+
 getXfunc
 # Import helper functions
 . ${scriptdir}\xtekpsfunc.ps1
